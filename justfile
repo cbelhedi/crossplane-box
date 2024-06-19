@@ -36,7 +36,11 @@ setup_kind cluster_name='control-plane':
   set -euo pipefail
 
   echo "Creating kind cluster - {{cluster_name}}"
-  envsubst < kind-config.yaml | kind create cluster --config - --wait 3m
+  if kind get clusters | grep -qw {{cluster_name}}; then
+    echo "Cluster {{cluster_name}} already exists. Deleting it first."
+    kind delete cluster --name {{cluster_name}}
+  fi
+  envsubst < kind-config.yaml | kind create cluster --name {{cluster_name}} --config - --wait 3m
   kind get kubeconfig --name {{cluster_name}}
   kubectl config use-context kind-{{cluster_name}}
 
@@ -78,7 +82,7 @@ launch_argo:
   sleep 3
   nohup {{browse}} http://localhost:{{argocd_port}} >/dev/null 2>&1 &
 
-# bootstrap ArgoCD apps and set reconcilation timer to 30 seconds
+# bootstrap ArgoCD apps and set reconciliation timer to 30 seconds
 bootstrap_apps:
   kubectl apply -f bootstrap.yaml
 
@@ -92,4 +96,4 @@ sync:
 # * delete KIND cluster
 teardown:
   echo "Delete KIND cluster"
-  kind delete clusters control-plane
+  kind delete cluster --name control-plane
